@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6f2">
+  <title>Daily Discipline</title>
+  <style>
+    :root { color-scheme:light; --ink:#20251f; --muted:#747c72; --line:#e5e8e1; --green:#347653; --paper:#fff; --bg:#f5f6f2; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; padding:28px 16px; display:grid; place-items:start center; background:var(--bg); color:var(--ink); font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { width:min(100%,1100px); }
+    .page-grid { display:grid; grid-template-columns:minmax(0, .92fr) minmax(0, 1.08fr); gap:18px; align-items:start; }
+    .page-grid .panel { margin-bottom:0; }
+    .daily-panel { position:sticky; top:24px; }
+    .monthly-panel { min-width:0; }
+    @media (max-width:760px) {
+      body { padding:22px 14px; }
+      .page-grid { grid-template-columns:1fr; gap:14px; }
+      .daily-panel { position:static; }
+    }
+    .eyebrow { margin:0 0 8px; color:var(--green); font-size:12px; font-weight:750; letter-spacing:.13em; text-transform:uppercase; }
+    h1 { margin:0; font-size:clamp(30px,7vw,38px); letter-spacing:-.045em; }
+    .date { margin:8px 0 24px; color:var(--muted); font-size:14px; }
+    .panel { padding:22px; border:1px solid var(--line); border-radius:20px; background:var(--paper); box-shadow:0 12px 36px rgba(28,42,28,.05); margin-bottom:16px; }
+    .progress-top,.month-top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .progress-top { margin-bottom:12px; }
+    .progress-label { font-size:14px; font-weight:650; }
+    .count { color:var(--green); font-size:14px; font-weight:750; font-variant-numeric:tabular-nums; }
+    .track { height:9px; overflow:hidden; border-radius:99px; background:#edf0eb; }
+    .fill { width:0%; height:100%; border-radius:99px; background:var(--green); transition:width .2s ease; }
+    .habits { display:grid; gap:0; margin-top:18px; }
+    .habit { display:flex; align-items:center; gap:14px; min-height:62px; padding:12px 2px; border-bottom:1px solid var(--line); cursor:pointer; }
+    .habit:last-child { border-bottom:0; }
+    input { width:21px; height:21px; margin:0; flex:0 0 auto; accent-color:var(--green); cursor:pointer; }
+    .habit-text { font-size:15px; font-weight:560; line-height:1.35; }
+    input:checked + .habit-text { color:#8b9389; text-decoration:line-through; }
+    .note { margin:16px 2px 0; color:var(--muted); font-size:12px; line-height:1.5; text-align:center; }
+    .complete { display:none; margin:18px 0 0; color:var(--green); font-size:14px; font-weight:700; text-align:center; }
+    .complete.show { display:block; }
+    .month-top { margin-bottom:18px; }
+    .month-title { font-size:17px; font-weight:750; }
+    .month-nav { display:flex; align-items:center; gap:8px; }
+    .month-nav button { width:34px; height:34px; border:1px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); font-size:18px; cursor:pointer; }
+    .month-nav button:disabled { opacity:.35; cursor:default; }
+    .calendar { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:7px; }
+    .weekday { color:var(--muted); font-size:11px; font-weight:700; text-align:center; padding-bottom:3px; }
+    .day { min-height:52px; border:1px solid var(--line); border-radius:11px; background:#fbfcfa; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; font-size:13px; }
+    .day.empty { border-color:transparent; background:transparent; }
+    .day.today { border-color:var(--green); }
+    .day.future { color:#b5bbb2; background:#f8f9f7; }
+    .day-number { font-weight:650; }
+    .day-mark { width:7px; height:7px; border-radius:50%; background:#d9ded6; }
+    .day-mark.some { background:#d2a34c; }
+    .day-mark.done { background:var(--green); }
+    .legend { display:flex; flex-wrap:wrap; gap:14px; margin-top:14px; color:var(--muted); font-size:11px; }
+    .legend span { display:inline-flex; align-items:center; gap:6px; }
+    .legend i { width:7px; height:7px; border-radius:50%; background:#d9ded6; }
+    .legend i.some { background:#d2a34c; }
+    .legend i.done { background:var(--green); }
+    .stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:18px; }
+    .stat { padding:12px 10px; border-radius:13px; background:#f6f8f4; }
+    .stat strong { display:block; color:var(--green); font-size:23px; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+    .stat span { display:block; margin-top:3px; color:var(--muted); font-size:11px; line-height:1.3; }
+    @media (max-width:390px) { .panel { padding:17px; } .calendar { gap:5px; } .day { min-height:47px; } .stats { gap:6px; } .stat { padding:10px 7px; } .stat strong { font-size:20px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">One day at a time</p>
+    <h1>Daily Discipline</h1>
+    <p class="date" id="today"></p>
+
+    <div class="page-grid">
+    <section class="panel daily-panel" aria-label="Daily habit tracker">
+      <div class="progress-top">
+        <span class="progress-label">Today's progress</span>
+        <span class="count" id="count" aria-live="polite">0 / 5</span>
+      </div>
+      <div class="track" role="progressbar" aria-label="Daily progress" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0" id="progress"><div class="fill" id="fill"></div></div>
+      <div class="habits" id="habits">
+        <label class="habit"><input type="checkbox" data-index="0"><span class="habit-text">30 minutes of walking</span></label>
+        <label class="habit"><input type="checkbox" data-index="1"><span class="habit-text">45 minutes of technical learning</span></label>
+        <label class="habit"><input type="checkbox" data-index="2"><span class="habit-text">Eat reasonably well</span></label>
+        <label class="habit"><input type="checkbox" data-index="3"><span class="habit-text">Avoid unnecessary scrolling</span></label>
+        <label class="habit"><input type="checkbox" data-index="4"><span class="habit-text">Get sufficient sleep</span></label>
+      </div>
+      <p class="complete" id="complete">All five done. Well done today!</p>
+    </section>
+
+    <section class="panel monthly-panel" aria-label="Monthly progress">
+      <div class="month-top">
+        <span class="month-title" id="month-title">Monthly progress</span>
+        <div class="month-nav">
+          <button id="prev-month" type="button" aria-label="Previous month">‹</button>
+          <button id="next-month" type="button" aria-label="Next month">›</button>
+        </div>
+      </div>
+      <div class="calendar" id="calendar" aria-label="Monthly calendar"></div>
+      <div class="legend">
+        <span><i></i>Not started</span><span><i class="some"></i>In progress</span><span><i class="done"></i>All 5 completed</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><strong id="full-days">0</strong><span>Perfect days</span></div>
+        <div class="stat"><strong id="habits-done">0</strong><span>Habits completed</span></div>
+        <div class="stat"><strong id="average">0%</strong><span>Daily average</span></div>
+      </div>
+      <p class="note">Your monthly history is saved in this browser on this device.</p>
+    </section>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const HABIT_COUNT = 5;
+      const today = new Date();
+      const todayKey = keyFor(today);
+      let viewedMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const boxes = [...document.querySelectorAll('input[type="checkbox"]')];
+      const count = document.getElementById('count');
+      const fill = document.getElementById('fill');
+      const progress = document.getElementById('progress');
+      const complete = document.getElementById('complete');
+
+      function keyFor(date) {
+        return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+      }
+      function readDay(key) {
+        try {
+          const value = JSON.parse(localStorage.getItem('daily-discipline-' + key) || '[]');
+          return Array.isArray(value) ? value.filter(n => Number.isInteger(n) && n >= 0 && n < HABIT_COUNT) : [];
+        } catch (_) { return []; }
+      }
+      function saveToday() {
+        const checked = boxes.map((box, i) => box.checked ? i : -1).filter(i => i !== -1);
+        try { localStorage.setItem('daily-discipline-' + todayKey, JSON.stringify(checked)); } catch (_) {}
+        renderDaily();
+        renderMonth();
+      }
+      function renderDaily() {
+        const done = boxes.filter(box => box.checked).length;
+        count.textContent = `${done} / ${HABIT_COUNT}`;
+        fill.style.width = `${done / HABIT_COUNT * 100}%`;
+        progress.setAttribute('aria-valuenow', done);
+        complete.classList.toggle('show', done === HABIT_COUNT);
+      }
+      function renderMonth() {
+        const year = viewedMonth.getFullYear();
+        const month = viewedMonth.getMonth();
+        const monthName = viewedMonth.toLocaleDateString(undefined, {month:'long', year:'numeric'});
+        document.getElementById('month-title').textContent = monthName;
+        document.getElementById('prev-month').disabled = year === 2000 && month === 0;
+        document.getElementById('next-month').disabled = year === today.getFullYear() && month === today.getMonth();
+
+        const calendar = document.getElementById('calendar');
+        calendar.innerHTML = '';
+        ['M','T','W','T','F','S','S'].forEach(letter => {
+          const el = document.createElement('div'); el.className = 'weekday'; el.textContent = letter; calendar.appendChild(el);
+        });
+        const firstDay = new Date(year, month, 1);
+        const offset = (firstDay.getDay() + 6) % 7;
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        for (let i=0; i<offset; i++) {
+          const blank = document.createElement('div'); blank.className = 'day empty'; calendar.appendChild(blank);
+        }
+        let perfectDays = 0, totalCompleted = 0, trackedDays = 0;
+        for (let day=1; day<=daysInMonth; day++) {
+          const date = new Date(year, month, day);
+          const key = keyFor(date);
+          const values = readDay(key);
+          const done = values.length;
+          const isFuture = date > new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          if (!isFuture) { trackedDays++; totalCompleted += done; if (done === HABIT_COUNT) perfectDays++; }
+          const cell = document.createElement('div');
+          cell.className = 'day' + (key === todayKey ? ' today' : '') + (isFuture ? ' future' : '');
+          const number = document.createElement('span'); number.className = 'day-number'; number.textContent = day;
+          const mark = document.createElement('i'); mark.className = 'day-mark' + (done === HABIT_COUNT ? ' done' : done > 0 ? ' some' : '');
+          cell.append(number, mark);
+          cell.title = isFuture ? `${monthName} ${day}: Upcoming` : `${monthName} ${day}: ${done}/${HABIT_COUNT} habits completed`;
+          calendar.appendChild(cell);
+        }
+        document.getElementById('full-days').textContent = perfectDays;
+        document.getElementById('habits-done').textContent = totalCompleted;
+        document.getElementById('average').textContent = trackedDays ? `${Math.round(totalCompleted / (trackedDays * HABIT_COUNT) * 100)}%` : '0%';
+      }
+
+      document.getElementById('today').textContent = today.toLocaleDateString(undefined, {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+      const savedToday = readDay(todayKey);
+      boxes.forEach((box, i) => { box.checked = savedToday.includes(i); box.addEventListener('change', saveToday); });
+      document.getElementById('prev-month').addEventListener('click', () => { viewedMonth = new Date(viewedMonth.getFullYear(), viewedMonth.getMonth()-1, 1); renderMonth(); });
+      document.getElementById('next-month').addEventListener('click', () => { viewedMonth = new Date(viewedMonth.getFullYear(), viewedMonth.getMonth()+1, 1); renderMonth(); });
+      renderDaily();
+      renderMonth();
+    })();
+  </script>
+</body>
+</html>
